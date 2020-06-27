@@ -1,17 +1,17 @@
 import DatabaseConnection from '../../utils/database-connection.utils';
-import { Point, PointItems, PointFilters } from '../../models';
 import { messages } from '../../utils/messages.utills';
+import { Point, PointFilters } from '../../models';
 
-class PointsRepository extends DatabaseConnection {
+class PointsRepository extends DatabaseConnection<Point, PointFilters> {
   constructor() {
     super('points');
   }
 
-  async index<PointFilters>(filters: PointFilters) {
+  async index(filters: PointFilters): Promise<PointFilters[]> {
     try {
       const points = await this.connection('points')
         .join('point_items', 'points.id', '=', 'point_items.point_id')
-        .whereIn('point_items.item_id', filters.items || [])
+        .whereIn('point_items.item_id', filters!.items || [])
         .where('city', filters.city || null)
         .where('uf', filters.UF || null)
         .distinct()
@@ -23,14 +23,17 @@ class PointsRepository extends DatabaseConnection {
     }
   }
 
-  async show(id: number) {
+  async show(id: number): Promise<Point> {
     const trx = await this.connection.transaction();
 
     try {
       const items = await trx('items')
         .join('point_items', 'items.id', '=', 'point_items.item_id')
         .where('point_items.point_id', id);
-      const point = await trx('points').select('*').where('id', id).first();
+      const point: Point = await trx('points')
+        .select('*')
+        .where('id', id)
+        .first();
       await trx.commit();
       return Promise.resolve({ ...point, items });
     } catch (error) {
@@ -38,13 +41,12 @@ class PointsRepository extends DatabaseConnection {
     }
   }
 
-  async create<Point, Number>(point: Point, items: string) {
+  async create(point: Point, items: string): Promise<Point> {
     const trx = await this.connection.transaction();
 
     try {
       const insertId = await trx('points').insert(point);
       const point_id = insertId[0];
-
       const arrItems = items
         .split(',')
         .map((item: string) => Number(item.trim()))

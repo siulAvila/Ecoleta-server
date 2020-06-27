@@ -2,11 +2,11 @@ import knex from '../database/connection';
 import { messages } from '../utils/messages.utills';
 import Knex from 'knex';
 
-abstract class DatabaseConnection {
+abstract class DatabaseConnection<T, U = {}> {
   connection: Knex = knex;
   constructor(private tableName: string) {}
 
-  async index<T>(filters?: T) {
+  async index(filters?: U): Promise<U[]> {
     try {
       const list = await this.connection(this.tableName).select('*');
       return Promise.resolve(list);
@@ -15,9 +15,9 @@ abstract class DatabaseConnection {
     }
   }
 
-  async show(id: number) {
+  async show(id: number): Promise<T> {
     try {
-      const item = await this.connection(this.tableName)
+      const item: T = await this.connection(this.tableName)
         .select('*')
         .where('id', id)
         .first();
@@ -27,10 +27,10 @@ abstract class DatabaseConnection {
     }
   }
 
-  async create<T, U>(data: T, obj?: U[]) {
+  async create(data: T, items: string): Promise<string | T> {
     try {
-      const ids = await this.connection(this.tableName).insert(data);
-      return ids;
+      const id = await this.connection(this.tableName).insert(data);
+      return { id, ...data };
     } catch (error) {
       return Promise.reject(messages.dataBaseError);
     }
